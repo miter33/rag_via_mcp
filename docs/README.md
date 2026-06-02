@@ -123,7 +123,7 @@ dotnet run --project RagDemo.Ingest -- --docs C:\path\to\your\documents
 dotnet run --project RagDemo.Chat
 ```
 
-An interactive Spectre.Console UI opens. Type your question and press Enter. The pipeline retrieves the most relevant passages and streams the LLM's answer back to you.
+An interactive Spectre.Console UI opens. Type your question and press Enter. The pipeline retrieves the most relevant passages and displays the LLM's answer once it is fully generated.
 
 ---
 

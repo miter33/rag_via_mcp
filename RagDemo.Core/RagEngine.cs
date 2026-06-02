@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Qdrant.Client;
@@ -53,9 +55,14 @@ public sealed class RagEngine
         {
             float[] embedding = await _embeddings.GetEmbeddingAsync(chunk.Text, EmbeddingType.Document);
 
+            // Deterministic ID: same source + same chunk index = same Guid, enabling true upsert semantics
+            var idBytes = MD5.HashData(
+                Encoding.UTF8.GetBytes($"{chunk.SourceFile}:{chunk.ChunkIndex}"));
+            var deterministicId = new Guid(idBytes);
+
             var point = new PointStruct
             {
-                Id      = Guid.NewGuid(),
+                Id      = deterministicId,
                 Vectors = (Vectors)embedding
             };
             point.Payload["text"]        = new Qdrant.Client.Grpc.Value { StringValue  = chunk.Text };
