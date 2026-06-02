@@ -41,15 +41,14 @@ public sealed class CohereEmbeddingService : IEmbeddingService
 
             using var request = new HttpRequestMessage(HttpMethod.Post, EmbedUrl);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            request.Content = JsonContent.Create(new
-            {
-                texts            = new[] { text },
-                model            = ModelName,
-                input_type       = inputType,
-                embedding_types  = new[] { "float" }
-            });
+            request.Content = JsonContent.Create(new CohereEmbedRequest(
+                Texts:          new[] { text },
+                Model:          ModelName,
+                InputType:      inputType,
+                EmbeddingTypes: new[] { "float" }
+            ));
 
-            var response = await _http.SendAsync(request);
+            using var response = await _http.SendAsync(request);
 
             if (response.StatusCode == HttpStatusCode.TooManyRequests && attempt < 2)
                 continue;
@@ -63,7 +62,13 @@ public sealed class CohereEmbeddingService : IEmbeddingService
         throw new InvalidOperationException("Unreachable: loop exhausted without returning or throwing");
     }
 
-    // ── Private DTOs for JSON deserialization ────────────────────────────────
+    // ── Private DTOs for JSON serialization / deserialization ───────────────
+
+    private record CohereEmbedRequest(
+        [property: JsonPropertyName("texts")]            string[]  Texts,
+        [property: JsonPropertyName("model")]            string    Model,
+        [property: JsonPropertyName("input_type")]       string    InputType,
+        [property: JsonPropertyName("embedding_types")]  string[]  EmbeddingTypes);
 
     private record CohereEmbedResponse(
         [property: JsonPropertyName("embeddings")] CohereEmbeddings Embeddings);
