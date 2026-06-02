@@ -1,1 +1,16 @@
+# API keys — NEVER commit this file
 .env
+
+# .NET build artifacts
+bin/
+obj/
+
+# Qdrant persistent storage
+qdrant_storage/
+
+# Ingest idempotency manifest
+ingested.json
+
+# OS files
+.DS_Store
+Thumbs.db
