@@ -36,9 +36,10 @@ The retrieved passages are injected into the LLM prompt as context. The model sy
 |---|---|---|
 | **Qdrant** | Vector store — persists embeddings, runs nearest-neighbour search | Self-hosted Docker image, no cloud account needed, gRPC API on port 6334 |
 | **Cohere `embed-english-v3.0`** | Embedding model — converts text to 1024-dimensional vectors | Free tier (1 000 calls/min), state-of-the-art retrieval quality |
-| **Groq `llama-3.1-8b-instant`** | LLM — synthesises answers from retrieved context | Free tier, extremely fast inference (~500 tok/s), no GPU required |
+| **Groq `llama-3.1-8b-instant`** | LLM — synthesises answers from retrieved context (Chat app only) | Free tier, extremely fast inference (~500 tok/s), no GPU required |
 | **Semantic Kernel 1.77.0** | .NET orchestration layer — wraps OpenAI-compatible endpoint for Groq | First-class .NET support, integrates naturally with the existing stack |
 | **PdfPig 0.1.14** | Pure .NET PDF text extraction | No native dependencies, works cross-platform without Poppler or Ghostscript |
+| **ModelContextProtocol 1.3.0** | MCP server — exposes `search_documents` tool to Claude Code | Lets Claude Code query your knowledge base during coding sessions |
 
 ---
 
@@ -99,7 +100,7 @@ docker ps
 
 ### Step 5 — Add documents
 
-Drop `.md`, `.txt`, or `.pdf` files into the `docs/` folder. A `sample.md` file explaining RAG is already there to test with.
+Drop `.md`, `.txt`, or `.pdf` files into the `docs/custom/` folder.
 
 PDF files must have selectable text (not scanned images). See Troubleshooting below if text appears garbled.
 
@@ -109,7 +110,7 @@ PDF files must have selectable text (not scanned images). See Troubleshooting be
 dotnet run --project RagDemo.Ingest
 ```
 
-The ingest tool reads all documents in `docs/`, chunks them, embeds each chunk via Cohere, and upserts the vectors into Qdrant. Ingestion is **idempotent** — re-running it will not create duplicate entries.
+The ingest tool reads all documents in `docs/custom/`, chunks them, embeds each chunk via Cohere, and upserts the vectors into Qdrant. Ingestion is **idempotent** — re-running it will not create duplicate entries.
 
 To ingest from a different folder, pass `--docs`:
 
@@ -124,6 +125,48 @@ dotnet run --project RagDemo.Chat
 ```
 
 An interactive Spectre.Console UI opens. Type your question and press Enter. The pipeline retrieves the most relevant passages and displays the LLM's answer once it is fully generated.
+
+---
+
+## Claude Code Integration (MCP)
+
+The `RagDemo.McpServer` project exposes your knowledge base as a tool that Claude Code can call automatically during conversations. Instead of the Groq LLM generating answers, **Claude itself** reads the retrieved chunks and responds — no extra setup needed beyond what is already running.
+
+### How it works
+
+1. Claude Code reads `.mcp.json` at startup and spawns the MCP server process.
+2. The server registers a `search_documents` tool with a description Claude can read.
+3. When you ask Claude Code a question, it decides autonomously whether to call the tool based on the tool's description.
+4. If called, the server embeds your query via Cohere, searches Qdrant, and returns the top-N matching chunks as text.
+5. Claude synthesises the answer from those chunks — with citations, reasoning, and Sonnet-quality output.
+
+### Setup
+
+The server is pre-configured in `.mcp.json`. Claude Code will start it automatically. You only need to:
+
+1. **Build the project once** (so `dotnet run` starts fast on subsequent launches):
+
+```powershell
+dotnet build RagDemo.McpServer
+```
+
+2. **Make sure Qdrant is running and documents are ingested** (Steps 4–6 above).
+
+3. **Approve the server** the first time Claude Code prompts you — or set `enableAllProjectMcpServers: true` in `.claude/settings.local.json`.
+
+### Groq key not required
+
+`RagDemo.McpServer` only uses **Cohere** (for embedding the query) and **Qdrant** (for search). The `GROQ_API_KEY` is not needed for the MCP server — only for the standalone `RagDemo.Chat` app.
+
+### Debugging the MCP server
+
+Because Claude Code owns the server process (stdio transport), you cannot launch it from Visual Studio directly. The recommended approach is **Attach to Process**:
+
+1. Let Claude Code connect — the server is now running as a spawned `dotnet` process.
+2. In Visual Studio: **Debug → Attach to Process** (`Ctrl+Alt+P`).
+3. Find the `dotnet.exe` process running `RagDemo.McpServer`.
+4. Set breakpoints in `Tools/DocumentSearchTools.cs`.
+5. Ask Claude Code a question to trigger the tool.
 
 ---
 

@@ -7,7 +7,7 @@
         "--project",
         "RagDemo.McpServer"
       ],
-      "cwd": "c:\\Users\\alexg\\OneDrive\\Документы\\repos\\rag_pipeline"
+      "cwd": "PATH_TO_YOUR_MCP"
     }
   }
 }

@@ -12,10 +12,14 @@ the model's response in specific, up-to-date, and citable source material.
 - **Embedding Model**: Converts text into vectors. Semantically similar texts land
   near each other in vector space. Cohere's embed-english-v3.0 produces 1024-dimensional vectors.
 - **LLM**: Reads the retrieved chunks and generates a fluent, cited answer.
-  Groq runs llama-3.1-8b-instant at very high speed on free-tier hardware.
+  Groq runs llama-3.1-8b-instant at very high speed on free-tier hardware (used by RagDemo.Chat).
+  Alternatively, Claude Code (via MCP) acts as the LLM — no Groq call needed.
 - **Chunking**: Long documents are split into smaller pieces (chunks) before embedding,
   because embedding models have input length limits and shorter, focused chunks
   retrieve more precisely than entire documents.
+- **MCP Server**: An optional integration layer (RagDemo.McpServer) that exposes the
+  retrieval step as a tool Claude Code can call. The LLM role is fulfilled by Claude
+  itself, so only Cohere + Qdrant are needed at runtime.
 
 ## Why RAG Reduces Hallucination
 
