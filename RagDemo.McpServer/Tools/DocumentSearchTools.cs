@@ -17,6 +17,8 @@ public static class DocumentSearchTools
         [Description("The search query to find relevant document chunks for.")] string query,
         [Description("Number of top results to return (default: 5).")] int topN = 5)
     {
+        topN = Math.Max(1, topN);
+
         float[] vector = await embeddings.GetEmbeddingAsync(query, EmbeddingType.Query);
 
         var hits = await qdrant.SearchAsync(
@@ -25,7 +27,7 @@ public static class DocumentSearchTools
             limit: (ulong)topN,
             payloadSelector: true);
 
-        if (!hits.Any())
+        if (hits.Count == 0)
             return "No relevant documents found for this query.";
 
         var sb = new System.Text.StringBuilder();
