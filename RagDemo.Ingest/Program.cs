@@ -138,11 +138,11 @@ static string FindDocsFolder(string start)
     var dir = start;
     for (int i = 0; i < 5; i++)
     {
-        var candidate = Path.Combine(dir, "docs");
+        var candidate = Path.Combine(dir, "docs", "custom");
         if (Directory.Exists(candidate)) return candidate;
         dir = Path.GetDirectoryName(dir) ?? dir;
     }
-    return Path.Combine(start, "docs");
+    return Path.Combine(start, "docs", "custom");
 }
 
 // Converts List<T> to IAsyncEnumerable<T> without requiring extra packages.
