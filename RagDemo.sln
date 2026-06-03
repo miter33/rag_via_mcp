@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RagDemo.Chat", "RagDemo.Cha
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RagDemo.Tests", "RagDemo.Tests\RagDemo.Tests.csproj", "{CD7E1DC5-C24E-4F0A-9101-FAF9621FC839}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RagDemo.McpServer", "RagDemo.McpServer\RagDemo.McpServer.csproj", "{6BA8FEBC-B8C3-47B3-8FC2-1D03C9CE17EE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{CD7E1DC5-C24E-4F0A-9101-FAF9621FC839}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CD7E1DC5-C24E-4F0A-9101-FAF9621FC839}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CD7E1DC5-C24E-4F0A-9101-FAF9621FC839}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6BA8FEBC-B8C3-47B3-8FC2-1D03C9CE17EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6BA8FEBC-B8C3-47B3-8FC2-1D03C9CE17EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6BA8FEBC-B8C3-47B3-8FC2-1D03C9CE17EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6BA8FEBC-B8C3-47B3-8FC2-1D03C9CE17EE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
