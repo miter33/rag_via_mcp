@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "rag-demo": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "RagDemo.McpServer"
+      ],
+      "cwd": "c:\\Users\\alexg\\OneDrive\\Документы\\repos\\rag_pipeline"
+    }
+  }
+}
