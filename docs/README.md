@@ -118,6 +118,31 @@ To ingest from a different folder, pass `--docs`:
 dotnet run --project RagDemo.Ingest -- --docs C:\path\to\your\documents
 ```
 
+#### Contextual RAG (optional, better retrieval quality)
+
+By default the ingest uses **Naive RAG**: each chunk is embedded as-is. You can switch to **Contextual RAG** by adding the `--contextual` flag:
+
+```powershell
+dotnet run --project RagDemo.Ingest -- --contextual
+```
+
+With this flag, each chunk gets a short LLM-generated description (via Groq) that situates it within the full document *before* embedding. The resulting vector encodes both the context and the chunk text, which significantly improves retrieval precision for queries that would otherwise produce weak cosine-similarity matches against raw isolated chunks.
+
+**Trade-off:** one Groq LLM call per chunk — noticeably slower and subject to free-tier rate limits (~6 000 tokens/min). The ingest automatically waits the exact number of seconds Groq specifies on a 429 response and retries.
+
+**Switching modes:** the two strategies produce incompatible vectors. To switch from naive to contextual (or back), clear the previous data first:
+
+```powershell
+# Delete the idempotency manifest so all files are re-ingested
+Remove-Item RagDemo.Ingest\bin\Debug\net8.0\ingested.json -ErrorAction SilentlyContinue
+
+# Restart Qdrant to drop all stored vectors
+docker compose restart
+
+# Re-ingest with the desired strategy
+dotnet run --project RagDemo.Ingest -- --contextual
+```
+
 ### Step 7 — Start the chat
 
 ```powershell
@@ -125,6 +150,40 @@ dotnet run --project RagDemo.Chat
 ```
 
 An interactive Spectre.Console UI opens. Type your question and press Enter. The pipeline retrieves the most relevant passages and displays the LLM's answer once it is fully generated.
+
+---
+
+## RAG Strategies
+
+This project supports two retrieval strategies, selectable at ingest time.
+
+### Naive RAG (default)
+
+Each chunk is embedded as raw text. Fast and simple, but short isolated chunks often produce weak vectors — a chunk like *"Results showed a 12% improvement"* has no signal about which document or topic it belongs to.
+
+```
+chunk text  →  embed  →  vector stored in Qdrant
+```
+
+### Contextual RAG (`--contextual`)
+
+Before embedding, an LLM generates a 1–2 sentence description that situates the chunk within the full document. That description is prepended to the chunk text, and the *combined* string is embedded.
+
+```
+LLM(full document + chunk)  →  context sentence
+context + "\n\n" + chunk    →  embed  →  richer vector stored in Qdrant
+```
+
+The vector now encodes both the document-level context and the chunk content. Queries that would miss a naive chunk — because the raw text is too generic or ambiguous — match correctly because the context is baked into the vector itself.
+
+The original chunk text is always preserved in the Qdrant payload for display; only the embedding input changes.
+
+| | Naive RAG | Contextual RAG |
+|---|---|---|
+| Ingest speed | Fast | Slow (1 LLM call per chunk) |
+| Retrieval quality | Baseline | Better for ambiguous/short chunks |
+| Groq API calls | 0 | 1 per chunk |
+| Vectors compatible | — | Incompatible — must re-ingest to switch |
 
 ---
 
