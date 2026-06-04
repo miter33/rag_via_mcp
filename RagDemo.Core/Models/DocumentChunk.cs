@@ -7,4 +7,6 @@ public record DocumentChunk
     public required string SourceFile { get; init; }
     /// <summary>Zero-based position of this chunk within its source file.</summary>
     public required int ChunkIndex { get; init; }
+    /// <summary>Full text of the source document. Populated by DocumentLoader; used by contextual enrichment at ingest time.</summary>
+    public string FullDocumentText { get; init; } = string.Empty;
 }

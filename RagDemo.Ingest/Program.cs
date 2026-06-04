@@ -19,6 +19,9 @@ var cohereKey = Environment.GetEnvironmentVariable("COHERE_API_KEY")
 var docsPath = args.SkipWhile(a => a != "--docs").Skip(1).FirstOrDefault()
                ?? FindDocsFolder(Directory.GetCurrentDirectory());
 
+// Optional --contextual flag: enables Contextual RAG (LLM enriches each chunk before embedding)
+var useContextual = args.Contains("--contextual");
+
 if (!Directory.Exists(docsPath))
 {
     AnsiConsole.MarkupLine($"[red]Docs folder not found:[/] {docsPath}");
@@ -41,7 +44,11 @@ services.AddSingleton(_ =>
         .Build());
 #pragma warning restore SKEXP0010
 
-services.AddSingleton<RagEngine>();
+services.AddSingleton<RagEngine>(sp => new RagEngine(
+    sp.GetRequiredService<IEmbeddingService>(),
+    sp.GetRequiredService<QdrantClient>(),
+    sp.GetRequiredService<Kernel>(),
+    useContextual ? new GroqContextualEnricher(sp.GetRequiredService<Kernel>()) : null));
 services.AddSingleton<DocumentLoader>();
 var sp = services.BuildServiceProvider();
 
@@ -65,6 +72,8 @@ var manifest = LoadManifest(ManifestPath);
 var allFiles = GetSupportedFiles(docsPath);
 var pending  = allFiles.Where(f => IsModified(f, manifest)).ToList();
 
+var strategyLabel = useContextual ? "[cyan]Contextual RAG[/] (LLM enriches each chunk)" : "[grey]Naive RAG[/]";
+AnsiConsole.MarkupLine($"Strategy: {strategyLabel}");
 AnsiConsole.MarkupLine(
     $"Found [bold]{allFiles.Count}[/] file(s) in docs/, [yellow]{pending.Count}[/] need ingestion.");
 

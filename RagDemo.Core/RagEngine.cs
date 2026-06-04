@@ -24,15 +24,18 @@ public sealed class RagEngine
     private const string CollectionName = "rag-demo";
     private const ulong  VectorSize     = 1024;
 
-    private readonly IEmbeddingService _embeddings;
-    private readonly QdrantClient      _qdrant;
-    private readonly Kernel            _kernel;
+    private readonly IEmbeddingService   _embeddings;
+    private readonly QdrantClient        _qdrant;
+    private readonly Kernel              _kernel;
+    private readonly IContextualEnricher? _enricher;
 
-    public RagEngine(IEmbeddingService embeddings, QdrantClient qdrant, Kernel kernel)
+    public RagEngine(IEmbeddingService embeddings, QdrantClient qdrant, Kernel kernel,
+        IContextualEnricher? enricher = null)
     {
         _embeddings = embeddings;
         _qdrant     = qdrant;
         _kernel     = kernel;
+        _enricher   = enricher;
     }
 
     /// <summary>Creates the Qdrant collection if it doesn't exist. Safe to call on every startup.</summary>
@@ -47,13 +50,26 @@ public sealed class RagEngine
 
     /// <summary>
     /// Embeds each chunk and upserts it into Qdrant.
-    /// Payload stores text + source for citation without re-reading files.
+    /// When an enricher is configured (Contextual RAG), the LLM-generated context is prepended
+    /// to the chunk text before embedding so the vector captures richer semantics.
+    /// The payload always stores the original chunk text for citation display.
     /// </summary>
     public async Task IngestAsync(IAsyncEnumerable<DocumentChunk> chunks)
     {
         await foreach (var chunk in chunks)
         {
-            float[] embedding = await _embeddings.GetEmbeddingAsync(chunk.Text, EmbeddingType.Document);
+            string context     = string.Empty;
+            string textToEmbed = chunk.Text;
+
+            if (_enricher != null && !string.IsNullOrEmpty(chunk.FullDocumentText))
+            {
+                context     = await _enricher.EnrichAsync(chunk.FullDocumentText, chunk.Text);
+                textToEmbed = string.IsNullOrEmpty(context)
+                    ? chunk.Text
+                    : context + "\n\n" + chunk.Text;
+            }
+
+            float[] embedding = await _embeddings.GetEmbeddingAsync(textToEmbed, EmbeddingType.Document);
 
             // Deterministic ID: same source + same chunk index = same Guid, enabling true upsert semantics
             var idBytes = MD5.HashData(
@@ -68,6 +84,7 @@ public sealed class RagEngine
             point.Payload["text"]        = new Qdrant.Client.Grpc.Value { StringValue  = chunk.Text };
             point.Payload["source"]      = new Qdrant.Client.Grpc.Value { StringValue  = chunk.SourceFile };
             point.Payload["chunk_index"] = new Qdrant.Client.Grpc.Value { IntegerValue = chunk.ChunkIndex };
+            point.Payload["context"]     = new Qdrant.Client.Grpc.Value { StringValue  = context };
 
             await _qdrant.UpsertAsync(CollectionName, new[] { point });
         }

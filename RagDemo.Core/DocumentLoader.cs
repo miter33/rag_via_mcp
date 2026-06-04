@@ -33,7 +33,7 @@ public sealed class DocumentLoader
     {
         var text = await ExtractTextAsync(filePath);
         await foreach (var chunk in ChunkTextAsync(text, filePath))
-            yield return chunk;
+            yield return chunk with { FullDocumentText = text };
     }
 
     /// <summary>
