@@ -37,11 +37,14 @@ public static class DocumentSearchTools
         for (int i = 0; i < hits.Count; i++)
         {
             var h = hits[i];
-            var source = Path.GetFileName(h.Payload["source"].StringValue);
+            var source     = Path.GetFileName(h.Payload["source"].StringValue);
             var chunkIndex = h.Payload["chunk_index"].IntegerValue;
-            var text = h.Payload["text"].StringValue;
+            var text       = h.Payload["text"].StringValue;
+            var context    = h.Payload.TryGetValue("context", out var cv) ? cv.StringValue : string.Empty;
 
             sb.AppendLine($"[{i + 1}] score: {h.Score:F3} | source: {source} | chunk #{chunkIndex}");
+            if (!string.IsNullOrEmpty(context))
+                sb.AppendLine($"context: {context}");
             sb.AppendLine(text);
             sb.AppendLine();
         }

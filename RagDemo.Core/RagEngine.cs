@@ -112,12 +112,16 @@ public sealed class RagEngine
             Text       = h.Payload["text"].StringValue,
             SourceFile = h.Payload["source"].StringValue,
             ChunkIndex = (int)h.Payload["chunk_index"].IntegerValue,
-            Score      = h.Score
+            Score      = h.Score,
+            Context    = h.Payload.TryGetValue("context", out var cv) ? cv.StringValue : string.Empty
         }).ToList();
 
         var context = string.Join("\n\n---\n\n",
             sources.Select((s, i) =>
-                $"[{i + 1}] (from {Path.GetFileName(s.SourceFile)}, chunk {s.ChunkIndex}):\n{s.Text}"));
+            {
+                var body = string.IsNullOrEmpty(s.Context) ? s.Text : $"{s.Context}\n\n{s.Text}";
+                return $"[{i + 1}] (from {Path.GetFileName(s.SourceFile)}, chunk {s.ChunkIndex}):\n{body}";
+            }));
 
         var chat = _kernel.GetRequiredService<IChatCompletionService>();
         var history = new ChatHistory();

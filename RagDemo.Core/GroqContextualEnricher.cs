@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Net;
+using System.Text.RegularExpressions;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
@@ -28,7 +31,34 @@ public sealed class GroqContextualEnricher : IContextualEnricher
             "document for the purpose of improving search retrieval. " +
             "Reply with only the context and nothing else.");
 
-        var response = await chat.GetChatMessageContentAsync(history);
-        return response.Content ?? string.Empty;
+        // Retry on HTTP 429: Groq's message always contains "Please try again in X.XXs",
+        // so we parse that instead of guessing a fixed delay.
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                var response = await chat.GetChatMessageContentAsync(history);
+                return response.Content ?? string.Empty;
+            }
+            catch (HttpOperationException ex)
+                when (ex.StatusCode == HttpStatusCode.TooManyRequests && attempt < 2)
+            {
+                var waitSeconds = ParseRetryAfterSeconds(ex.Message);
+                await Task.Delay(TimeSpan.FromSeconds(waitSeconds));
+            }
+        }
+
+        throw new InvalidOperationException("Unreachable: loop exhausted without returning or throwing");
+    }
+
+    // Extracts "17.21" from "Please try again in 17.21s." and adds a 1s buffer.
+    // Falls back to 20s if the pattern isn't found.
+    private static double ParseRetryAfterSeconds(string message)
+    {
+        var match = Regex.Match(message, @"try again in (\d+\.?\d*)s");
+        return match.Success && double.TryParse(
+                match.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out var seconds)
+            ? seconds + 1
+            : 20;
     }
 }
