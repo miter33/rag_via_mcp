@@ -26,12 +26,28 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: '--allowedTools "Bash(gh *)"'
           prompt: |
-            Review the pull request ${{ github.repository }}/pull/${{ github.event.pull_request.number }}.
+            Review the pull request ${{ github.repository }}/pull/${{ github.event.pull_request.number }} and post inline comments on specific lines.
 
             Steps:
-            1. Get the diff: `gh pr diff ${{ github.event.pull_request.number }}`
-            2. Analyze it for bugs, security vulnerabilities, and significant code quality issues.
-            3. Post your findings as a single PR comment using:
-               `gh pr comment ${{ github.event.pull_request.number }} --body "..."`
+            1. Get the diff:
+               `gh pr diff ${{ github.event.pull_request.number }}`
 
-            Keep the review concise and actionable. Focus on real issues, not style nitpicks.
+            2. Get the latest commit SHA:
+               `gh pr view ${{ github.event.pull_request.number }} --json headRefOid --jq '.headRefOid'`
+
+            3. Analyze the diff for bugs, security vulnerabilities, and significant code quality issues. For each issue note the exact file path and line number in the file.
+
+            4. Post a PR review with inline comments using the GitHub API:
+               ```
+               gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
+                 -X POST \
+                 -f commit_id="<SHA from step 2>" \
+                 -f event="COMMENT" \
+                 -f body="Code review summary" \
+                 -f "comments[][path]=<file path>" \
+                 -F "comments[][line]=<line number in file>" \
+                 -f "comments[][body]=<issue description>"
+               ```
+               Add one entry per issue found. Use the actual line number in the file (not the diff position).
+
+            Focus on real issues only. Skip style nitpicks.
