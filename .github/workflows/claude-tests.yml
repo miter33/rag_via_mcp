@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+concurrency:
+  group: tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   generate-tests:
     runs-on: ubuntu-latest
@@ -22,7 +26,8 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" --model claude-haiku-4-5-20251001'
+          claude_args: '--allowedTools "Bash(gh *),Bash(git *),Write,Edit,Read" --model claude-haiku-4-5-20251001'
+          show_full_output: true
           prompt: |
             Look at the diff of PR #${{ github.event.pull_request.number }}:
             `gh pr diff ${{ github.event.pull_request.number }}`
@@ -33,10 +38,10 @@ jobs:
             3. If no test project exists, create one under `RagDemo.Tests/`
             4. Follow the existing test naming and structure conventions found in the repo
 
-            Commit the new test files to the current branch using git:
+            Write the test files to disk, then commit and push using git:
             - `git config user.email "claude@anthropic.com"`
             - `git config user.name "Claude"`
-            - `git add <test files>`
+            - `git add .`
             - `git commit -m "test: generate xUnit tests"`
             - `git push`
 
