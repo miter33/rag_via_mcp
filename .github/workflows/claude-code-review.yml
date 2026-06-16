@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
 
+concurrency:
+  group: review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   claude-review:
     runs-on: ubuntu-latest
@@ -29,24 +33,28 @@ jobs:
             Review the pull request ${{ github.repository }}/pull/${{ github.event.pull_request.number }} and post inline comments on specific lines.
 
             Steps:
-            1. Get the diff:
-               `gh pr diff ${{ github.event.pull_request.number }}`
-
-            2. Get the latest commit SHA:
+            1. Get the latest commit SHA:
                `gh pr view ${{ github.event.pull_request.number }} --json headRefOid --jq '.headRefOid'`
 
-            3. Analyze the diff for bugs, security vulnerabilities, and significant code quality issues. For each issue note the exact file path and line number in the file.
+            2. Check if a review already exists for this exact commit:
+               `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews --jq '[.[] | select(.user.login == "claude[bot]" and .commit_id == "<SHA from step 1>")] | length'`
+               If the result is greater than 0, a review already exists for this commit — stop and do nothing.
 
-            4. Post a PR review with inline comments using the GitHub API:
+            3. Get the diff:
+               `gh pr diff ${{ github.event.pull_request.number }}`
+
+            4. Analyze the diff for bugs, security vulnerabilities, and significant code quality issues. For each issue note the exact file path and line number in the file.
+
+            5. Post a PR review with inline comments using the GitHub API:
                ```
                gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
                  -X POST \
-                 -f commit_id="<SHA from step 2>" \
+                 -f commit_id="<SHA from step 1>" \
                  -f event="COMMENT" \
                  -f body="Code review summary" \
                  -f "comments[][path]=<file path>" \
                  -F "comments[][line]=<line number in file>" \
-                 -f "comments[[body]=<issue description>"
+                 -f "comments[][body]=<issue description>"
                ```
                Add one entry per issue found. Use the actual line number in the file (not the diff position).
 
