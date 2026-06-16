@@ -93,3 +93,4 @@ When running in GitHub Actions:
 - Always create a new branch for changes, never commit directly to main
 - Format PR comments using GitHub-flavoured Markdown
 - Include file paths as clickable links in review comments
+- **Never include API keys, tokens, secrets, or any sensitive values in output, comments, or commit messages** — reference the environment variable name instead (e.g. `COHERE_API_KEY`) if you need to mention one
