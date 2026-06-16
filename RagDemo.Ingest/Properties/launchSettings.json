@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "RagDemo.Ingest": {
+      "commandName": "Project",
+      "commandLineArgs": "--contextual"
+    }
+  }
+}
