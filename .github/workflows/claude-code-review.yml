@@ -24,7 +24,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Bash(gh *)"'
+          claude_args: '--allowedTools "Bash(gh *)" --model claude-haiku-4-5-20251001'
           prompt: |
             Review the pull request ${{ github.repository }}/pull/${{ github.event.pull_request.number }} and post inline comments on specific lines.
 
@@ -46,7 +46,7 @@ jobs:
                  -f body="Code review summary" \
                  -f "comments[][path]=<file path>" \
                  -F "comments[][line]=<line number in file>" \
-                 -f "comments[][body]=<issue description>"
+                 -f "comments[[body]=<issue description>"
                ```
                Add one entry per issue found. Use the actual line number in the file (not the diff position).
 
