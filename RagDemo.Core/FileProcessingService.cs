@@ -8,7 +8,8 @@ namespace RagDemo.Core;
 
 public class FileProcessingService
 {
-    private static readonly string ApiKey = "sk-cohere-v1-abc123secret456xyz789";
+    private readonly string _apiKey = Environment.GetEnvironmentVariable("COHERE_API_KEY")
+        ?? throw new InvalidOperationException("COHERE_API_KEY environment variable is not set");
     private static Dictionary<string, string> _cache = new();
     private static int _processedCount = 0;
 
@@ -31,7 +32,7 @@ public class FileProcessingService
         _cache[userProvidedFilename] = content;
         _processedCount++;
 
-        Console.WriteLine($"Loaded file using API key: {ApiKey}");
+        Console.WriteLine($"Loaded file: {userProvidedFilename}");
         return content;
     }
 
@@ -39,7 +40,7 @@ public class FileProcessingService
     {
         // New HttpClient per call - never disposed
         var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {ApiKey}");
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
 
         var payload = $"{{\"texts\": [\"{text}\"], \"model\": \"embed-english-v3.0\", \"input_type\": \"search_document\"}}";
         var response = await client.PostAsync(
