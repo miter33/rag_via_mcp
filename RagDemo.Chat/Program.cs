@@ -38,7 +38,12 @@ services.AddSingleton(_ =>
         .Build());
 #pragma warning restore SKEXP0010
 
-services.AddSingleton<RagEngine>();
+services.AddSingleton<IRerankingService>(_ => new CohereRerankingService(new HttpClient(), cohereKey));
+services.AddSingleton<RagEngine>(sp => new RagEngine(
+    sp.GetRequiredService<IEmbeddingService>(),
+    sp.GetRequiredService<QdrantClient>(),
+    sp.GetRequiredService<Kernel>(),
+    reranker: sp.GetRequiredService<IRerankingService>()));
 var sp = services.BuildServiceProvider();
 var engine = sp.GetRequiredService<RagEngine>();
 

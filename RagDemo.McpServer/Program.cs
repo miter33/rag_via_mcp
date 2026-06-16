@@ -15,6 +15,8 @@ var builder = Host.CreateApplicationBuilder(args);
 // Register services the tool needs
 builder.Services.AddSingleton<IEmbeddingService>(
     _ => new CohereEmbeddingService(new HttpClient(), cohereKey));
+builder.Services.AddSingleton<IRerankingService>(
+    _ => new CohereRerankingService(new HttpClient(), cohereKey));
 builder.Services.AddSingleton(_ => new QdrantClient("localhost", 6334));
 
 // Register MCP server with stdio transport

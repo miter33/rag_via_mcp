@@ -24,18 +24,20 @@ public sealed class RagEngine
     private const string CollectionName = "rag-demo";
     private const ulong  VectorSize     = 1024;
 
-    private readonly IEmbeddingService   _embeddings;
-    private readonly QdrantClient        _qdrant;
-    private readonly Kernel              _kernel;
+    private readonly IEmbeddingService    _embeddings;
+    private readonly QdrantClient         _qdrant;
+    private readonly Kernel               _kernel;
     private readonly IContextualEnricher? _enricher;
+    private readonly IRerankingService?   _reranker;
 
     public RagEngine(IEmbeddingService embeddings, QdrantClient qdrant, Kernel kernel,
-        IContextualEnricher? enricher = null)
+        IContextualEnricher? enricher = null, IRerankingService? reranker = null)
     {
         _embeddings = embeddings;
         _qdrant     = qdrant;
         _kernel     = kernel;
         _enricher   = enricher;
+        _reranker   = reranker;
     }
 
     /// <summary>Creates the Qdrant collection if it doesn't exist. Safe to call on every startup.</summary>
@@ -93,21 +95,25 @@ public sealed class RagEngine
     /// <summary>
     /// Full RAG query:
     /// 1. Embed the question (search_query mode)
-    /// 2. Retrieve top-N nearest chunks from Qdrant
-    /// 3. Build context from those chunks
-    /// 4. Ask Groq to answer using only that context
+    /// 2. Retrieve candidates from Qdrant (top-20 when re-ranking, top-N otherwise)
+    /// 3. Optionally re-rank candidates with Cohere cross-encoder and keep top-N
+    /// 4. Build context from final chunks
+    /// 5. Ask Groq to answer using only that context
     /// </summary>
     public async Task<QueryResult> QueryAsync(string question, int topN = 3)
     {
         float[] queryVector = await _embeddings.GetEmbeddingAsync(question, EmbeddingType.Query);
 
+        // Stage 1: fetch more candidates than needed when re-ranking will trim them down
+        int candidateCount = _reranker != null ? Math.Max(topN * 5, 20) : topN;
+
         var hits = await _qdrant.SearchAsync(
             CollectionName,
             new ReadOnlyMemory<float>(queryVector),
-            limit: (ulong)topN,
+            limit: (ulong)candidateCount,
             payloadSelector: true);
 
-        var sources = hits.Select(h => new ChunkSource
+        var candidates = hits.Select(h => new ChunkSource
         {
             Text       = h.Payload["text"].StringValue,
             SourceFile = h.Payload["source"].StringValue,
@@ -115,6 +121,20 @@ public sealed class RagEngine
             Score      = h.Score,
             Context    = h.Payload.TryGetValue("context", out var cv) ? cv.StringValue : string.Empty
         }).ToList();
+
+        List<ChunkSource> sources;
+        if (_reranker != null && candidates.Count > 0)
+        {
+            // Stage 2: cross-encoder sees query + document together — much more precise than cosine similarity
+            var texts    = candidates.Select(c =>
+                string.IsNullOrEmpty(c.Context) ? c.Text : $"{c.Context}\n\n{c.Text}").ToList();
+            var reranked = await _reranker.RerankAsync(question, texts, topN);
+            sources      = reranked.Select(r => candidates[r.Index] with { Score = r.RelevanceScore }).ToList();
+        }
+        else
+        {
+            sources = candidates.Take(topN).ToList();
+        }
 
         var context = string.Join("\n\n---\n\n",
             sources.Select((s, i) =>
