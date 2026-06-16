@@ -29,6 +29,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: '--allowedTools "Bash(gh *)" --model claude-haiku-4-5-20251001'
+          allowed_bots: 'claude'
           prompt: |
             Review the pull request ${{ github.repository }}/pull/${{ github.event.pull_request.number }} and post inline comments on specific lines.
 
