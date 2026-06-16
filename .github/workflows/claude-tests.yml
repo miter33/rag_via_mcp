@@ -1,0 +1,36 @@
+name: Claude Test Generation
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  generate-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Generate tests with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools "Bash(gh *)" --model claude-haiku-4-5-20251001'
+          prompt: |
+            Look at the diff of PR #${{ github.event.pull_request.number }}:
+            `gh pr diff ${{ github.event.pull_request.number }}`
+
+            For every new or modified public class or method in the diff:
+            1. Generate xUnit tests covering the main success path and key edge cases
+            2. Place tests in the appropriate test project (look for an existing *Tests* or *.Tests* project in the repo)
+            3. If no test project exists, create one under `RagDemo.Tests/`
+            4. Follow the existing test naming and structure conventions found in the repo
+
+            Commit the new test files to the current branch.
+            If no new or modified public methods exist in the diff, do nothing.
