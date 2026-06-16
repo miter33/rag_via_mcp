@@ -24,6 +24,8 @@ if (string.IsNullOrWhiteSpace(groqKey) || string.IsNullOrWhiteSpace(cohereKey))
 }
 
 // ── Dependency injection ──────────────────────────────────────────────────────
+const string GroqApiEndpoint = "https://api.groq.com/openai/v1";
+
 var services = new ServiceCollection();
 services.AddSingleton<IEmbeddingService>(_ => new CohereEmbeddingService(new HttpClient(), cohereKey));
 services.AddSingleton(_ => new QdrantClient("localhost", 6334));
@@ -34,7 +36,7 @@ services.AddSingleton(_ =>
         .AddOpenAIChatCompletion(
             modelId:  "llama-3.1-8b-instant",
             apiKey:   groqKey,
-            endpoint: new Uri("https://api.groq.com/openai/v1"))
+            endpoint: new Uri(GroqApiEndpoint))
         .Build());
 #pragma warning restore SKEXP0010
 
